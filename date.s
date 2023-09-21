@@ -2,17 +2,19 @@
 *
 * Itagaki Fumihiko 25-Jan-93  Create.
 * 1.0
+* Itagaki Fumihiko 05-Jan-95  指定形式を変更.
+* 1.1
 *
 * Usage: date [ -u ] [ +format ]
-*        date [ -u ] MMDDhhmm[[CC]YY][.ss]
+*        date [ -u ] [[CC]YY]MMDDhhmm[.ss]
 
 .include doscall.h
 .include chrcode.h
 
 .xref DecodeHUPAIR
 .xref issjis
-.xref isdigit
 .xref utoa
+.xref strchr
 .xref strlen
 .xref strforn
 .xref memmovi
@@ -102,63 +104,31 @@ decode_opt_done:
 	*
 	*  設定
 	*
-		*  MM
+		movea.l	a1,a0
+		moveq	#'.',d0
+		bsr	strchr
+		move.l	a0,d0
+		sub.l	a1,d0
+		subq.l	#8,d0
+		blo	bad_date
+		beq	year_ok
+
+		subq.l	#2,d0
+		blo	bad_date
+		beq	year_2digit
+
+		subq.l	#2,d0
+		bne	bad_date
+	*  CCYY
 		bsr	get2digit
-		bmi	bad_date
-		beq	bad_date
-
-		cmp.b	#12,d0
-		bhi	bad_date
-
-		move.b	d0,month
-
-		*  DD
+		mulu	#100,d0
+		move.w	d0,d1
 		bsr	get2digit
-		bmi	bad_date
-		beq	bad_date
-
-		move.b	d0,day_of_month
-
-		*  hh
-		bsr	get2digit
-		bmi	bad_date
-
-		cmp.b	#23,d0
-		bhi	bad_date
-
-		move.b	d0,hour
-
-		*  mm
-		bsr	get2digit
-		bmi	bad_date
-
-		cmp.b	#59,d0
-		bhi	bad_date
-
-		move.b	d0,minute
-
-		*  [[CC]YY]
-		move.b	(a1),d0
-		bsr	isdigit
-		bne	year_ok
-
-		bsr	get2digit
-		bmi	bad_date
-
-		move.w	d0,d3
-		move.b	(a1),d0
-		bsr	isdigit
-		bne	year_2digit
-
-		bsr	get2digit
-		bmi	bad_date
-
-		mulu	#100,d3
-		add.w	d3,d0
+		add.w	d1,d0
 		sub.w	#1900,d0
 		blo	bad_year
 
-		cmp.w	#79,d0
+		cmp.w	#80,d0
 		blo	bad_year
 
 		cmp.w	#180,d0
@@ -169,7 +139,8 @@ bad_year:
 		bra	exit_1
 
 year_2digit:
-		move.w	d3,d0
+	*  YY
+		bsr	get2digit
 		cmp.b	#80,d0
 		bhs	set_year
 
@@ -177,8 +148,32 @@ year_2digit:
 set_year:
 		move.b	d0,year
 year_ok:
+	*  MM
+		bsr	get2digit
+		beq	bad_date
 
-		*  [.ss]
+		cmp.b	#12,d0
+		bhi	bad_date
+
+		move.b	d0,month
+	*  DD
+		bsr	get2digit
+		beq	bad_date
+
+		move.b	d0,day_of_month
+	*  hh
+		bsr	get2digit
+		cmp.b	#23,d0
+		bhi	bad_date
+
+		move.b	d0,hour
+	*  mm
+		bsr	get2digit
+		cmp.b	#59,d0
+		bhi	bad_date
+
+		move.b	d0,minute
+	*  .ss
 		clr.b	second
 		move.b	(a1)+,d0
 		beq	datimearg_ok
@@ -187,15 +182,12 @@ year_ok:
 		bne	bad_date
 
 		bsr	get2digit
-		bmi	bad_date
-
 		cmp.b	#59,d0
 		bhi	bad_date
 
+		move.b	d0,second
 		tst.b	(a1)+
 		bne	bad_date
-
-		move.b	d0,second
 datimearg_ok:
 		bsr	set_days_table_p
 		moveq	#0,d0
@@ -647,28 +639,23 @@ get2digit:
 		moveq	#0,d0
 		move.b	(a1)+,d0
 		sub.b	#'0',d0
-		blo	get2digit_error
+		blo	bad_date
 
 		cmp.b	#9,d0
-		bhi	get2digit_error
+		bhi	bad_date
 
 		mulu	#10,d0
 		move.b	(a1)+,d1
 		sub.b	#'0',d1
-		blo	get2digit_error
+		blo	bad_date
 
 		cmp.b	#9,d1
-		bhi	get2digit_error
+		bhi	bad_date
 
 		add.b	d1,d0
-get2digit_return:
 		move.w	(a7)+,d1
 		tst.l	d0
 		rts
-
-get2digit_error:
-		moveq	#-1,d0
-		bra	get2digit_return
 *****************************************************************
 get_present_time:
 		movem.l	d0-d2/a0,-(a7)
@@ -788,7 +775,7 @@ werror_1:
 .data
 
 	dc.b	0
-	dc.b	'## date 1.0 ##  Copyright(C)1993 by Itagaki Fumihiko',0
+	dc.b	'## date 1.1 ##  Copyright(C)1993-95 by Itagaki Fumihiko',0
 
 msg_myname:		dc.b	'date'
 msg_colon:		dc.b	': ',0
@@ -800,7 +787,7 @@ msg_bad_year:		dc.b	'年が範囲外です',CR,LF,0
 msg_too_many_args:	dc.b	'引数が多過ぎます',0
 msg_usage:		dc.b	CR,LF
 			dc.b	'使用法:  表示:  date [-u] [+format]',CR,LF
-			dc.b	'         設定:  date [-u] MMDDhhmm[[CC]YY][.ss]'
+			dc.b	'         設定:  date [-u] [[CC]YY]MMDDhhmm[.ss]'
 str_newline:		dc.b	CR,LF,0
 
 str_AM:		dc.b	'AM',0
