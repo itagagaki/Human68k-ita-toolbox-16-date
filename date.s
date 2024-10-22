@@ -428,7 +428,7 @@ format_D:
 format_y:
 		moveq	#0,d3
 print_year:
-		moveq	#1,d4
+		moveq	#2,d4
 		moveq	#0,d0
 		move.b	year,d0
 		add.w	#1900,d0
