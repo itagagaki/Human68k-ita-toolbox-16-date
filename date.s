@@ -4,6 +4,8 @@
 * 1.0
 * Itagaki Fumihiko 05-Jan-95  指定形式を変更.
 * 1.1
+* TcbnErik (@kg68k)  23-Oct-2024  2000年-2009年に+%yと+%Dで年が1桁で出力される挙動の修正
+* 1.2
 *
 * Usage: date [ -u ] [ +format ]
 *        date [ -u ] [[CC]YY]MMDDhhmm[.ss]
@@ -775,7 +777,7 @@ werror_1:
 .data
 
 	dc.b	0
-	dc.b	'## date 1.1 ##  Copyright(C)1993-95 by Itagaki Fumihiko',0
+	dc.b	'## date 1.2 ##  Copyright(C)1993-95 by Itagaki Fumihiko',0
 
 msg_myname:		dc.b	'date'
 msg_colon:		dc.b	': ',0
